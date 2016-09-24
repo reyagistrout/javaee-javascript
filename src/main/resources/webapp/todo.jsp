@@ -15,7 +15,7 @@
             var principal = '${pageContext.request.userPrincipal.name}';
         </script>
         <script src="javascript/todo/controllers.js"></script>
-        <script src="javascript/todo/services.js"></script>
+        <script src="javascript/todo/services.js?123"></script>
         <script src="javascript/todo/directives.js"></script>
         <script src="javascript/todo/application.js"></script>
     </head>
@@ -59,4 +59,5 @@
                 </div>
             </div>
         </div>
+    </body>
 </html>
