@@ -1,8 +1,5 @@
 package org.glassfish.javaee.javascript.backend;
 
-/**
- * Created by Marilia Portela on 23/09/2016.
- */
 //
 //  ========================================================================
 //  Copyright (c) 1995-2013 Mort Bay Consulting Pty. Ltd.
@@ -133,7 +130,7 @@ public class Main
         {
             throw new FileNotFoundException("Unable to find resource " + WEBROOT_INDEX);
         }
-        // Points to wherever /webroot/ (the resource) is
+
         return indexUri.toURI();
     }
 
@@ -234,12 +231,10 @@ public class Main
     }
 
     /**
-     * Create Default Servlet (must be named "default")
+     * Create Jersey Servlet
      */
     private ServletHolder jerseyServletHolder()
     {
-//        ServletHolder jerseyServletHolder = new ServletHolder("rest",
-//                org.glassfish.jersey.servlet.ServletContainer.class);
         ServletHolder jerseyServletHolder = new ServletHolder(new ServletContainer());
 
         jerseyServletHolder.setInitOrder(1);
@@ -249,28 +244,8 @@ public class Main
                 "jersey.config.server.provider.classnames",
                 RestConfiguration.class.getCanonicalName());
 
-//        jerseyServletHolder.setInitParameter(ServerProperties.PROVIDER_PACKAGES, "resources");
-
-        // Create JAX-RS application.
-//        final ResourceConfig application = new ResourceConfig()
-//                .packages("jersey.jetty.embedded")
-//                .register(JacksonFeature.class);
-//        ServletHolder jerseyServletHolder = new ServletHolder(new
-//                org.glassfish.jersey.servlet.ServletContainer(application));
         return jerseyServletHolder;
     }
-
-    /**
-     * Create Example of mapping jsp to path spec
-     */
-    private ServletHolder exampleJspFileMappedServletHolder()
-    {
-        ServletHolder holderAltMapping = new ServletHolder();
-        holderAltMapping.setName("todo.jsp");
-        holderAltMapping.setForcedPath("/test/foo/todo.jsp");
-        return holderAltMapping;
-    }
-
 
     /**
      * Establish the Server URI
