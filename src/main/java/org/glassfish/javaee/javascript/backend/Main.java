@@ -18,6 +18,9 @@ package org.glassfish.javaee.javascript.backend;
 //  ========================================================================
 //
 
+import org.apache.deltaspike.cdise.api.CdiContainer;
+import org.apache.deltaspike.cdise.api.CdiContainerLoader;
+import org.apache.deltaspike.cdise.servlet.CdiServletRequestListener;
 import org.apache.tomcat.InstanceManager;
 import org.apache.tomcat.SimpleInstanceManager;
 import org.eclipse.jetty.annotations.ServletContainerInitializersStarter;
@@ -25,17 +28,32 @@ import org.eclipse.jetty.apache.jsp.JettyJasperInitializer;
 import org.eclipse.jetty.jsp.JettyJspServlet;
 import org.eclipse.jetty.plus.annotation.ContainerInitializer;
 import org.eclipse.jetty.server.ConnectionFactory;
+import org.eclipse.jetty.server.Handler;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.server.ServerConnector;
+import org.eclipse.jetty.server.handler.ContextHandlerCollection;
+import org.eclipse.jetty.server.session.SessionHandler;
 import org.eclipse.jetty.servlet.DefaultServlet;
+import org.eclipse.jetty.servlet.FilterHolder;
+import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.eclipse.jetty.servlet.ServletHolder;
 import org.eclipse.jetty.util.log.JavaUtilLog;
 import org.eclipse.jetty.util.log.Log;
 import org.eclipse.jetty.webapp.WebAppContext;
+import org.glassfish.javaee.javascript.backend.todo.JsonMoxyConfigurationContextResolver;
 import org.glassfish.javaee.javascript.backend.todo.RestConfiguration;
+import org.glassfish.javaee.javascript.backend.todo.ToDoResource;
+import org.glassfish.jersey.server.ResourceConfig;
 import org.glassfish.jersey.servlet.ServletContainer;
+import org.glassfish.jersey.servlet.init.JerseyServletContainerInitializer;
+//import org.jboss.weld.environment.se.Weld;
+//import org.jboss.weld.environment.se.WeldContainer;
 
+import javax.enterprise.inject.spi.CDI;
 import javax.swing.*;
+import javax.ws.rs.core.Application;
+import javax.ws.rs.core.Context;
+import javax.ws.rs.core.UriInfo;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -47,6 +65,7 @@ import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.util.ArrayList;
+import java.util.EventListener;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -60,6 +79,8 @@ public class Main
 {
     // Resource path pointing to where the WEBROOT is
     private static final String WEBROOT_INDEX = "/webapp/";
+
+    private static final String REST_API_INDEX = "/org/glassfish/javaee/javascript/backend/todo/";
 
     public static void main(String[] args) throws Exception
     {
@@ -80,6 +101,9 @@ public class Main
     private Server server;
     private URI serverURI;
 
+    //private Weld weld;
+    private CdiContainer cdiContainer;
+
     public Main(int port)
     {
         this.port = port;
@@ -92,18 +116,47 @@ public class Main
 
     public void start() throws Exception
     {
+
+        //https://jersey.java.net/documentation/latest/cdi.support.html
+        ////////////////////////////////////////////
+        //weld = new Weld();
+        //WeldContainer container = weld.initialize();
+        ////////////////////////////////////////////
+        cdiContainer = CdiContainerLoader.getCdiContainer();
+        cdiContainer.boot();
+        cdiContainer.getContextControl().startContexts();
+
         server = new Server();
         ServerConnector connector = connector();
         server.addConnector(connector);
 
+        Runtime.getRuntime().addShutdownHook(new Thread(new Runnable() {
+            @Override
+            public void run() {
+//                server.stop();
+               // weld.shutdown();
+                cdiContainer.shutdown();
+            }
+        }));
+
         URI baseUri = getWebRootResourceUri();
+        URI baseRestUri = getRestApiResourceUri();
 
         // Set JSP to use Standard JavaC always
         System.setProperty("org.apache.jasper.compiler.disablejsr199", "false");
 
         WebAppContext webAppContext = getWebAppContext(baseUri, getScratchDir());
 
-        server.setHandler(webAppContext);
+//        server.setHandler(webAppContext);
+
+        ServletContextHandler restApi = setupRestApiContextHandler(baseRestUri);
+
+        ContextHandlerCollection contexts = new ContextHandlerCollection();
+        contexts.setHandlers(new Handler[]{restApi, webAppContext});
+
+        server.setHandler(contexts);
+
+//        restApi.addEventListener(new CdiServletRequestListener());
 
         // Start Server
         server.start();
@@ -114,6 +167,12 @@ public class Main
             LOG.fine(server.dump());
         }
         this.serverURI = getServerUri(connector);
+
+        LOG.info("REST URI: "
+                        + (String.format("%s://%s:%d", "http", "localhost", port))
+                        + restApi.getContextPath()
+                        + restApi.getDisplayName()//getServletHandler().getServlets()[0].getForcedPath()
+        );
     }
 
     private ServerConnector connector()
@@ -129,6 +188,18 @@ public class Main
         if (indexUri == null)
         {
             throw new FileNotFoundException("Unable to find resource " + WEBROOT_INDEX);
+        }
+
+        return indexUri.toURI();
+    }
+
+    private URI getRestApiResourceUri() throws FileNotFoundException, URISyntaxException
+    {
+
+        URL indexUri = this.getClass().getResource(REST_API_INDEX);
+        if (indexUri == null)
+        {
+            throw new FileNotFoundException("Unable to find resource " + REST_API_INDEX);
         }
 
         return indexUri.toURI();
@@ -159,7 +230,7 @@ public class Main
     private WebAppContext getWebAppContext(URI baseUri, File scratchDir)
     {
         WebAppContext context = new WebAppContext();
-        context.setContextPath("/");
+        context.setContextPath("/api2");
         context.setAttribute("javax.servlet.context.tempdir", scratchDir);
         context.setAttribute("org.eclipse.jetty.server.webapp.ContainerIncludeJarPattern",
                 ".*/[^/]*servlet-api-[^/]*\\.jar$|.*/javax.servlet.jsp.jstl-.*\\.jar$|.*/.*taglibs.*\\.jar$");
@@ -168,14 +239,59 @@ public class Main
         context.setAttribute(InstanceManager.class.getName(), new SimpleInstanceManager());
         context.addBean(new ServletContainerInitializersStarter(context), true);
         context.setClassLoader(getUrlClassLoader());
+        context.setParentLoaderPriority(true);
 
-        context.addServlet(jspServletHolder(), "*.jsp");
+        //context.addServlet(jspServletHolder(), "*.jsp");
 
-        context.addServlet(defaultServletHolder(baseUri), "/");
+        //context.addServlet(defaultServletHolder(baseUri), "/");
 
-        context.addServlet(jerseyServletHolder(), "/resources/*");
+        //context.addServlet(jerseyServletHolder(), "/resources/*");
 
         return context;
+    }
+
+    private ServletContextHandler setupRestApiContextHandler( URI baseRestUri) {
+
+//
+//        RuntimeDelegate delegate = RuntimeDelegate.getInstance();
+//        JAXRSServerFactoryBean bean = delegate.createEndpoint(new CustomApplication(), JAXRSServerFactoryBean.class);
+        ResourceConfig config = ResourceConfig.forApplicationClass(RestConfiguration.class);
+        config.packages(RestConfiguration.class.getPackage().getName());
+
+        config.register(JsonMoxyConfigurationContextResolver.class);
+        config.register(ToDoResource.class);
+        final ServletHolder cxfServletHolder = new ServletHolder(new ServletContainer(config));
+//        cxfServletHolder.setInitParameter("javax.ws.rs.Application", RestConfiguration.class.getCanonicalName());
+//        cxfServletHolder.setName("rest");
+//        cxfServletHolder.setForcedPath("rest");
+        cxfServletHolder.setInitOrder(1);
+
+
+        final ServletContextHandler cxfContext = new ServletContextHandler(ServletContextHandler.SESSIONS);
+        //cxfContext.setSessionHandler(new SessionHandler());
+        cxfContext.setContextPath("/api1");
+        cxfContext.setResourceBase(baseRestUri.toASCIIString());
+        cxfContext.addEventListener(new CdiServletRequestListener());
+        cxfContext.addServlet(cxfServletHolder, "/*");
+
+
+
+
+
+
+
+        //        cxfContext.addFilter(new FilterHolder(CorsFilter.class), "/*",
+//                EnumSet.allOf(DispatcherType.class));
+
+        //http://myHostName/contextPath/servletURI/resourceURI
+//        LOG.info("REST URI: "
+//                        + (String.format("%s://%s:%d/", "http", "localhost", port)) + "/"
+//                        + cxfContext.getContextPath() + "/"
+//                        + cxfContext.getServletHandler().getServlets()[0].getContextPath()
+//        );
+//        LOG.info(uriInfo.getAbsolutePath().toASCIIString());
+
+        return cxfContext;
     }
 
     /**
@@ -244,6 +360,9 @@ public class Main
                 "jersey.config.server.provider.classnames",
                 RestConfiguration.class.getCanonicalName());
 
+//        jerseyServletHolder.setInitParameter("resourceBase",  "/resources/*");
+//        jerseyServletHolder.setInitParameter("dirAllowed", "true");
+
         return jerseyServletHolder;
     }
 
@@ -274,6 +393,7 @@ public class Main
     public void stop() throws Exception
     {
         server.stop();
+        cdiContainer.shutdown();
     }
 
     /**

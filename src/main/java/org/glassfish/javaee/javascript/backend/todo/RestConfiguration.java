@@ -43,6 +43,9 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import javax.persistence.EntityManager;
+import javax.persistence.EntityManagerFactory;
+import javax.persistence.Persistence;
 import javax.ws.rs.ApplicationPath;
 import javax.ws.rs.core.Application;
 import org.glassfish.jersey.server.ServerProperties;
@@ -67,5 +70,6 @@ public class RestConfiguration extends Application {
     private void addRestResourceClasses(Set<Class<?>> resources) {
         resources.add(org.glassfish.javaee.javascript.backend.todo.JsonMoxyConfigurationContextResolver.class);
         resources.add(org.glassfish.javaee.javascript.backend.todo.ToDoResource.class);
+
     }
 }

@@ -39,19 +39,47 @@
  */
 package org.glassfish.javaee.javascript.backend.todo;
 
+import org.apache.deltaspike.jpa.api.transaction.Transactional;
+import org.glassfish.jersey.process.internal.RequestScoped;
+
 import java.util.List;
-import javax.persistence.EntityManager;
-import javax.persistence.PersistenceContext;
+import javax.ejb.Stateful;
+import javax.enterprise.inject.Disposes;
+import javax.enterprise.inject.Produces;
+import javax.inject.Inject;
+import javax.persistence.*;
 
 public class DefaultToDoItemRepository implements ToDoItemRepository {
 
-    @PersistenceContext
+    //or manual bootstrapping
+    @PersistenceContext(unitName="hsqldb")
     private EntityManager entityManager;
 
+    @Produces
+    @RequestScoped
+    protected EntityManager createEntityManager()
+    {
+        return this.entityManager;
+    }
+
+    protected void closeEntityManager(@Disposes EntityManager entityManager)
+    {
+        if (entityManager.isOpen())
+        {
+            entityManager.close();
+        }
+    }
+
+
+//    @Inject
+//    private EntityManager entityManager;
+
+    @Transactional
     @Override
     public ToDoItem create(ToDoItem item) {
+//        EntityManagerFactory entityManagerFactory = Persistence.createEntityManagerFactory("hsqldb");
+//        EntityManager entityManager = entityManagerFactory.createEntityManager();
         entityManager.persist(item);
-
         return item;
     }
 
@@ -60,8 +88,11 @@ public class DefaultToDoItemRepository implements ToDoItemRepository {
         return entityManager.find(ToDoItem.class, id);
     }
 
+    @Transactional
     @Override
     public List<ToDoItem> findByUsername(String username) {
+//        EntityManagerFactory entityManagerFactory = Persistence.createEntityManagerFactory("hsqldb");
+//        EntityManager entityManager = entityManagerFactory.createEntityManager();
         return entityManager.createNamedQuery(
                 "ToDoItem.findByUsername",
                 ToDoItem.class)

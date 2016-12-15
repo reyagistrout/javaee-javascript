@@ -15,7 +15,25 @@
         <!-- Set resource encoding -->
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <jetty-version>9.3.7.v20160115</jetty-version>
+        <jersey-version>2.23.2</jersey-version>
+        <!-- CDI properties -->
+        <weld.version>2.3.3.Final</weld.version>
+        <deltaspike.version>1.7.2</deltaspike.version>
+        <!-- Database properties -->
+        <hsqldb.version>2.3.1</hsqldb.version>
     </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>org.apache.deltaspike.distribution</groupId>
+                <artifactId>distributions-bom</artifactId>
+                <version>${deltaspike.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
 
 
     <dependencies>
@@ -52,6 +70,18 @@
             <artifactId>javax.servlet-api</artifactId>
             <version>3.1.0</version>
         </dependency>
+        <dependency>
+            <groupId>org.hsqldb</groupId>
+            <artifactId>hsqldb</artifactId>
+            <version>${hsqldb.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.hibernate</groupId>
+            <artifactId>hibernate-core</artifactId>
+            <version>5.2.2.Final</version>
+        </dependency>
+
+
 
         <!-- REST & WEBSOCKET -->
         <dependency>
@@ -59,20 +89,91 @@
             <artifactId>javaee-api</artifactId>
             <version>7.0</version>
         </dependency>
-        <dependency>
+        <dependency> <!--so para containes que não implementam a especificação servlet 3.0 ou maior -->
             <groupId>org.glassfish.jersey.containers</groupId>
             <artifactId>jersey-container-servlet-core</artifactId>
-            <version>2.23.2</version>
+            <version>${jersey-version}</version>
         </dependency>
         <dependency>
             <groupId>org.glassfish.jersey.containers</groupId>
             <artifactId>jersey-container-servlet</artifactId>
-            <version>2.23.2</version>
+            <version>${jersey-version}</version>
         </dependency>
         <dependency>
             <groupId>org.glassfish.jersey.media</groupId>
             <artifactId>jersey-media-moxy</artifactId>
-            <version>2.23.2</version>
+            <version>${jersey-version}</version>
+        </dependency>
+        <!--<dependency>-->
+            <!--<groupId>org.glassfish.jersey.ext.cdi</groupId>-->
+            <!--<artifactId>jersey-weld2-se</artifactId>-->
+            <!--<version>${jersey-version}</version>-->
+        <!--</dependency>-->
+
+        <!--<dependency>-->
+        <!-- the structure has changed, jersey-gf-cdi has been replaced by multiple modules. -->
+        <!-- In order to run in servlet container (jetty),you will need jersey-cdi1x-servlet dependency. -->
+        <!-- If you would like to run out of the servlet environment, you would need to use jersey-weld-se module. -->
+        <!--Both do have (transitive) dependencies on jersey-cdi1x-->
+
+        <!--<groupId>org.glassfish.jersey.containers.glassfish</groupId>-->
+        <!--<artifactId>jersey-gf-cdi</artifactId>-->
+        <!--<version>2.14</version>-->
+        <!--</dependency>-->
+
+        <dependency>
+            <groupId>org.glassfish.jersey.ext.cdi</groupId>
+            <artifactId>jersey-cdi1x</artifactId>
+            <version>${jersey-version}</version>
+        </dependency>
+
+        <!-- CDI E TRANSAÇÃO -->
+        <dependency>
+            <groupId>org.apache.deltaspike.core</groupId>
+            <artifactId>deltaspike-core-api</artifactId>
+            <scope>compile</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.deltaspike.core</groupId>
+            <artifactId>deltaspike-core-impl</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.jboss.weld.se</groupId>
+            <artifactId>weld-se</artifactId>
+            <version>${weld.version}</version>
+            <scope>runtime</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.deltaspike.cdictrl</groupId>
+            <artifactId>deltaspike-cdictrl-api</artifactId>
+            <scope>compile</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.deltaspike.cdictrl</groupId>
+            <artifactId>deltaspike-cdictrl-weld</artifactId>
+            <scope>runtime</scope>
+        </dependency> <!--mvn clean install-->
+
+        <dependency>
+            <groupId>org.apache.deltaspike.cdictrl</groupId>
+            <artifactId>deltaspike-cdictrl-servlet</artifactId>
+        </dependency>
+
+
+        <dependency>
+            <groupId>org.apache.deltaspike.modules</groupId>
+            <artifactId>deltaspike-jpa-module-api</artifactId>
+            <version>${deltaspike.version}</version>
+            <scope>compile</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.apache.deltaspike.modules</groupId>
+            <artifactId>deltaspike-jpa-module-impl</artifactId>
+            <version>${deltaspike.version}</version>
+            <scope>runtime</scope>
         </dependency>
 
 
@@ -160,6 +261,24 @@
                     </execution>
                 </executions>
             </plugin>
+            <!--Para rodar o MAVEN na versão certa, independente do JAVA_HOME, temos duas opções: -->
+            <!--Ou usa via compiler-plugin ou via linha de comando-->
+            <!--
+                mvn -Dmaven.compiler.fork=true -Dmaven.compiler.executable="C:\Program Files\Java\jdk1.8.0_101\bin\javac" -Denforcer.skip=true clean install
+            -->
+
+
+
+            <!--<plugin>-->
+                <!--<groupId>org.apache.maven.plugins</groupId>-->
+                <!--<artifactId>maven-compiler-plugin</artifactId>-->
+                <!--<configuration>-->
+                    <!--<verbose>true</verbose>-->
+                    <!--<fork>true</fork>-->
+                    <!--<executable>C:/Program Files/Java/jdk1.8.0_101/bin/javac</executable>-->
+                    <!--<compilerVersion>1.8</compilerVersion>-->
+                <!--</configuration>-->
+            <!--</plugin>-->
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>exec-maven-plugin</artifactId>

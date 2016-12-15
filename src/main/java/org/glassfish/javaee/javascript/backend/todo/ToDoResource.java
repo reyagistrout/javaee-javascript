@@ -44,6 +44,8 @@ import java.util.List;
 
 import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
+import javax.persistence.EntityManager;
+import javax.persistence.PersistenceContext;
 import javax.validation.Valid;
 import javax.validation.constraints.NotNull;
 import javax.validation.constraints.Size;
@@ -56,7 +58,7 @@ import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 
-@Path("/todo/{username}")
+@Path("/todo/{username}")//@Path("todo")
 @ApplicationScoped
 public class ToDoResource implements Serializable {
 
@@ -64,6 +66,15 @@ public class ToDoResource implements Serializable {
 
     @Inject
     private ToDoService service;
+
+
+//    @PersistenceContext(unitName="hsqldb")
+//    private EntityManager entityManager;
+//
+//    @Produces
+//    public EntityManager getEntityManager(){
+//        return entityManager;
+//    }
 
     @POST
     @Consumes({"application/json"})
@@ -73,38 +84,37 @@ public class ToDoResource implements Serializable {
             @NotNull
             @Size(min = 4, max = 14, message = "User name must be between 4 and 14 characters.") String username,
             @Valid ToDoItem item) {
-        return service.addToDoItem(username, item);
+        return service.addToDoItem("nicole", item);
     }
 
-    @PUT
-    @Path("{id}")
-    @Consumes({"application/json"})
-    public void edit(
-            @PathParam("username")
-            @NotNull
-            @Size(min = 4, max = 14, message = "User name must be between 4 and 14 characters.") String username,
-            @PathParam("id") Long id,
-            @Valid ToDoItem item) {
-        item.setId(id);
-        service.updateToDoItem(username, item);
-    }
-
-    @DELETE
-    @Path("{id}")
-    public void remove(
-            @PathParam("username")
-            @NotNull
-            @Size(min = 4, max = 14, message = "User name must be between 4 and 14 characters.") String username,
-            @PathParam("id") Long id) {
-        service.removeToDoItem(username, id);
-    }
+//    @PUT
+//    @Path("{id}")
+//    @Consumes({"application/json"})
+//    public void edit(
+//            @PathParam("username")
+//            @NotNull
+//            @Size(min = 4, max = 14, message = "User name must be between 4 and 14 characters.") String username,
+//            @PathParam("id") Long id,
+//            @Valid ToDoItem item) {
+//        item.setId(id);
+//        service.updateToDoItem(username, item);
+//    }
+//
+//    @DELETE
+//    @Path("{id}")
+//    public void remove(
+//            @PathParam("username")
+//            @NotNull
+//            @Size(min = 4, max = 14, message = "User name must be between 4 and 14 characters.") String username,
+//            @PathParam("id") Long id) {
+//        service.removeToDoItem(username, id);
+//    }
 
     @GET
     @Produces({"application/json"})
     public List<ToDoItem> getAll(
-            @PathParam("username")
             @NotNull
             @Size(min = 4, max = 14, message = "User name must be between 4 and 14 characters.") String username) {
-        return service.findToDoItemsByUsername(username);
+        return service.findToDoItemsByUsername("nicole");
     }
 }

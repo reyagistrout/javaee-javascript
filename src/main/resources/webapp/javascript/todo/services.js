@@ -5,6 +5,6 @@ var todoServices = angular.module('todoServices', ['ngResource']);
 todoServices.factory('ToDo', ['$resource',
     function($resource) {
         return $resource(
-                'http://localhost:12345/resources/todo/:userId/:itemId',
-                {userId: principal, itemId: '@id'}, {'update': {method: 'PUT'}});
+                'http://localhost:12345/api1/todo/:userId/:itemId',
+                {userId: 'nicole', itemId: '@id'}, {'update': {method: 'PUT'}});
     }]);
